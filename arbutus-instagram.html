@@ -1,0 +1,146 @@
+<link rel="import" href="../polymer/polymer-element.html">
+
+<dom-module id="arbutus-instagram">
+  <template>
+    <style>
+      :host {
+        display: block;
+      }
+    </style>
+    
+    <div>
+      Arbutus Instagram Viewer : temporary DOM
+      <div>Click<a href=[[authLink]] target="_blank">here</a> to authenticate this viewer!</div>
+      <div>Token: [[accessToken]]</div>
+    </div>
+  </template>
+
+  <script>
+    /**
+     * `arbutus-instagram`
+     * A polymer webcomponent for loading instagram content asynchronously (lazily) and within shadow dom.
+     *
+     * @customElement
+     * @polymer
+     * @demo demo/index.html
+     */
+    class ArbutusInstagram extends Polymer.Element {
+      static get is() { return 'arbutus-instagram'; }
+      static get properties() {
+        return {
+          storageKeys: {
+            type: Object,
+            readonly: true,
+            value: {
+              token: 'arbutus-instagram::access_token',
+              id: 'arbutus-instagram::client_id'
+            }
+          },
+          clientid: {
+            type: String,
+            notify: true,
+            reflectToAttribute: true,
+            observer: "__clientIDChanged",
+            value: () => localStorage.getItem('arbutus-instagram::client_id') || "caf288bf12a442d59c306899ca0bfd25"
+          },
+          redirecturi: {
+            type: String,
+            notify: true,
+            reflectToAttribute: true,
+            observer: "__redirectURIChanged",
+            value: () => location.href
+          },
+          accessToken: {
+            type: String,
+            readonly: true,
+            notify: true
+          },
+          authLink: {
+            type: String,
+            computed: "__computeLink(clientid, redirecturi)"
+          }
+        };
+      }
+
+      constructor() {
+        super();
+        this._boundStorageListener = this.__onStorage.bind(this);
+      }
+
+      ready() {
+        super.ready();
+        // Handles cases when the redirect URI points back to this page
+        let match = location.hash.match("#access_token=([a-zA-Z0-9\.]+)");
+        if (match && match[1]) {
+          window.localStorage.setItem("arbutus-instagram::access_token", match[1].toString());
+        }
+      }
+
+      connectedCallback() {
+        super.connectedCallback();
+
+        window.addEventListener('storage', this._boundStorageListener);
+
+        // See if we're authenticated from a previous session
+        let storedToken = window.localStorage.getItem(this.storageKeys.token);
+        if (storedToken !== undefined && storedToken !== null) {
+          this.accessToken = storedToken;
+        }
+      }
+
+      disconnectedCallback(){
+        super.disconnectedCallback();
+        window.removeEventListener('storage', this._boundStorageListener);
+      }
+
+      /*
+      * Fires when anther tab changes local storage
+      */
+      __onStorage(e) {
+        if (e.key === this.storageKeys.token) {
+          // Someone changed our token
+          this.accessToken = e.newValue;
+        }
+
+        if (e.key === this.storageKeys.id) {
+          // Someone changed the stored client id
+          this.clientid = e.newValue;
+        }
+      }
+
+      /*
+      *  Fires when the DOM changes the clientid attribute
+      */
+      __clientIDChanged() {
+        // Get old client_id
+        let stored_id = window.localStorage.getItem(this.storageKeys.id);
+
+        // Set new client_id
+        if (this.clientid) {
+          window.localStorage.setItem(this.storageKeys.id, this.clientid);
+        } else {
+          window.localStorage.removeItem(this.storageKeys.id);
+        }
+
+        // If client_id has changed, remove the token and update the auth link
+        if (stored_id !== this.clientid) {
+          window.localStorage.removeItem(this.storageKeys.token);
+          this.accessToken = undefined;
+        }
+      }
+
+      /* 
+      * Fires when the DOM changes the redirecturi attribute
+      */
+      __redirectURIChanged() {
+        this.redirecturi = new URL(this.redirecturi, location.href).href;
+      }
+
+      __computeLink(id, uri) {
+        return `https://api.instagram.com/oauth/authorize/?client_id=${id}&redirect_uri=${uri}&response_type=token`;
+      }
+    }
+
+    window.customElements.define(ArbutusInstagram.is, ArbutusInstagram);
+  </script>
+</dom-module>

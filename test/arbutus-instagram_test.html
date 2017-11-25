@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, minimum-scale=1, initial-scale=1, user-scalable=yes">
+
+    <title>arbutus-instagram test</title>
+
+    <script src="../../webcomponentsjs/webcomponents-lite.js"></script>
+    <script src="../../web-component-tester/browser.js"></script>
+
+    <link rel="import" href="../arbutus-instagram.html">
+  </head>
+  <body>
+
+    <test-fixture id="BasicTestFixture">
+      <template>
+        <arbutus-instagram></arbutus-instagram>
+      </template>
+    </test-fixture>
+
+    <script>
+      suite('arbutus-instagram', () => {
+
+        test('instantiating the element sprouts default properties', () => {
+          const element = fixture('BasicTestFixture');
+          assert.deepEqual(element.getAttributeNames(), ['clientid', 'redirecturi']);
+        });
+
+        test('changes to client id and redirect uri reflect between attribute and property', () => {
+          const element = fixture('BasicTestFixture');
+          
+          const ID1 = "1111";
+          element.clientid = ID1;
+          assert.equal(element.clientid, ID1);
+          assert.equal(element.getAttribute('clientid'), ID1);
+
+          const ID2 = "2222";
+          element.setAttribute('clientid', ID2);
+          assert.equal(element.clientid, ID2);
+          assert.equal(element.getAttribute('clientid'), ID2);
+
+          const URI1 = "https://local.testing/callback/1111";
+          element.redirecturi = URI1;
+          assert.equal(element.redirecturi, URI1);
+          assert.equal(element.getAttribute('redirecturi'), URI1);
+
+          const URI2 = "https://local.testing/callback/2222";
+          element.redirecturi = URI2;
+          assert.equal(element.redirecturi, URI2);
+          assert.equal(element.getAttribute('redirecturi'), URI2);
+
+        });
+
+        test('setting a clientid persists to localStorage', () => {
+          const element = fixture('BasicTestFixture');
+
+          // Verify persistance using propery setter
+          const ID1 = '1111';
+          element.clientid = ID1;
+          const savedClientID1 = window.localStorage.getItem(element.storageKeys.id);
+          assert.equal(savedClientID1, ID1);
+
+          // Verify persistance using attribute setter
+          const ID2 = '2222';
+          element.setAttribute('clientid', ID2);
+          const savedClientID2 = window.localStorage.getItem(element.storageKeys.id);
+          assert.equal(savedClientID2, ID2);
+
+        });
+
+        test('setting a redirect URI on the element converts it to an absolute URL', () => {
+          const element = fixture('BasicTestFixture');
+
+          // The default is to redirect back to this page
+          assert.equal(element.redirecturi, location.href);
+
+          // Appends the path to the current location
+          const relative = (path) => location.href.substring(0, location.href.lastIndexOf("/") + 1) + path;
+
+          // Creates an absolute url
+          const absolute = (path) => location.origin + path;
+
+          // Setting a relative path appends it to the current href
+          const PATH1 = 'testing/1111/';
+          element.redirecturi = PATH1
+          assert.equal(element.redirecturi, relative(PATH1));
+
+          // The above works using the attribute setter
+          const PATH2 = 'testing/2222/';
+          element.setAttribute('redirecturi', PATH2)
+          assert.equal(element.getAttribute('redirecturi'), relative(PATH2));
+
+          // Setting an absolute path appends it to the hostname
+          const PATH3 = '/testing/3333/';
+          element.redirecturi = PATH3;
+          assert.equal(element.redirecturi, absolute(PATH3));
+
+          // The above works using the attribute setter
+          const PATH4 = '/testing/4444/';
+          element.setAttribute('redirecturi', PATH4);
+          assert.equal(element.getAttribute('redirecturi'), absolute(PATH4));
+
+          // Setting another URL remains unchanged
+          const PATH5 = 'https://local.testing/5555/';
+          element.redirecturi = PATH5;
+          assert.equal(element.redirecturi, PATH5);
+
+          // The above works using the attribute setter
+          const PATH6 = 'https://local.testing/6666/';
+          element.setAttribute('redirecturi', PATH6);
+          assert.equal(element.getAttribute('redirecturi'), PATH6);
+        });
+
+        
+      });
+    </script>
+
+  </body>
+</html>
