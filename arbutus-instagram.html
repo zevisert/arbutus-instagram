@@ -4,14 +4,21 @@
   <template>
     <style>
       :host {
-        display: block;
+        display: grid;
+        grid-template-rows: 100%;
+        grid-template-columns: 100%;
+        grid-row-gap: 5em;
       }
     </style>
     
     <div>
-      Arbutus Instagram Viewer : temporary DOM
-      <div>Click<a href=[[authLink]] target="_blank">here</a> to authenticate this viewer!</div>
+      <h3>Arbutus Instagram Viewer : temporary DOM</h3>
+      <div>Click <a href=[[authLink]] target="_blank">here</a> to authenticate this viewer!</div>
       <div>Token: [[accessToken]]</div>
+    </div>
+
+    <div id="media" on-click="loadMedia">
+      Click to load media
     </div>
   </template>
 
@@ -161,6 +168,18 @@
 
       __computeLink(id, uri) {
         return `https://api.instagram.com/oauth/authorize/?client_id=${id}&redirect_uri=${uri}&response_type=token`;
+      }
+
+      async loadMedia() {
+        let response = fetch(`https://api.instagram.com/v1/media/shortcode/${this.shortcode}?access_token=${this.accessToken}`);
+        let img = document.createElement('img');
+        img.style.width = "100%";
+        this.$.media.appendChild(img);
+        
+        const reply = await (await response).json();
+        img.src = reply.data.images.standard_resolution.url;
+        
+        this.reply = reply;
       }
     }
 
