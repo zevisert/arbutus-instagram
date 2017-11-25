@@ -28,6 +28,29 @@
       static get is() { return 'arbutus-instagram'; }
       static get properties() {
         return {
+
+          // Operational properties
+          shortcode: {
+            type: String,
+            notify: true,
+            reflectToAttribute: true
+          },
+
+          comments: {
+            type: Boolean,
+            notify: true,
+            reflectToAttribute: true,
+            value: false
+          },
+
+          caption: {
+            type: Boolean,
+            notify: true,
+            reflectToAttribute: true,
+            value: true
+          }, 
+
+          // Internal properties
           storageKeys: {
             type: Object,
             readonly: true,
