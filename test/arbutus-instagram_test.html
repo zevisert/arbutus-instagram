@@ -15,27 +15,38 @@
 
     <test-fixture id="BasicTestFixture">
       <template>
-        <arbutus-instagram></arbutus-instagram>
+        <arbutus-instagram redirecturi="/callback.html"></arbutus-instagram>
       </template>
     </test-fixture>
     
-    <test-fixture id="ShortcodeTestFixture">
+    <test-fixture id="ImageTestFixture">
       <template>
         <arbutus-instagram shortcode="BSrtEwZF3xV"></arbutus-instagram>
       </template>
     </test-fixture>
 
-    <script>
-      suite('arbutus-instagram', () => {
+    <test-fixture id="VideoTestFixture">
+        <template>
+          <arbutus-instagram shortcode="BZEemCJl4IC"></arbutus-instagram>
+        </template>
+    </test-fixture>
 
-        test('instantiating the element sprouts default properties', () => {
-          const element = fixture('BasicTestFixture');
-          expect(element.getAttributeNames()).to.include.members(['clientid', 'redirecturi', 'caption']);
+    <script>
+      describe('arbutus-instagram local tests', () => {
+
+        let element;
+        beforeEach(() => {
+          element = fixture('BasicTestFixture');
+          localStorage.clear();
         });
 
-        test('changes to client id and redirect uri reflect between attribute and property', () => {
-          const element = fixture('BasicTestFixture');
-          
+        it('should sprout default properties', function (done) {
+          expect(element.getAttributeNames()).to.include.members(['clientid', 'redirecturi', 'caption']);
+          done();
+        });
+
+        it('reflects changes to client id and redirect uri between attribute and property', function (done) {
+                   
           const ID1 = "1111";
           element.clientid = ID1;
           expect(element.clientid).to.equal(ID1);
@@ -56,11 +67,11 @@
           expect(element.redirecturi).to.equal(URI2);
           expect(element.getAttribute('redirecturi')).to.equal(URI2);
 
+          done();
         });
 
-        test('setting a clientid persists to localStorage', () => {
-          const element = fixture('BasicTestFixture');
-
+        it('persists a clientid using localStorage', function (done) {
+          
           // Verify persistance using propery setter
           const ID1 = '1111';
           element.clientid = ID1;
@@ -71,12 +82,13 @@
           element.setAttribute('clientid', ID2);
           expect(localStorage.getItem(element.storageKeys.id)).to.equal(ID2);
 
+          done();
         });
 
-        test('setting a redirect URI on the element converts it to an absolute URL', () => {
-          const element = fixture('BasicTestFixture');
-
+        it('converts redirect URI to an absolute URL', function (done) {
+          
           // The default is to redirect back to this page
+          element.redirecturi = "";
           expect(element.redirecturi).to.equal(location.href);
 
           // Appends the path to the current location
@@ -114,9 +126,106 @@
           const PATH6 = 'https://local.testing/6666/';
           element.setAttribute('redirecturi', PATH6);
           expect(element.getAttribute('redirecturi')).to.equal(PATH6);
+
+          done();
+        });
+      });
+
+      describe('arbutus-instagam authentication tests', () => {
+
+        let element;
+        beforeEach(() => {
+          element = fixture('BasicTestFixture');
+        })
+
+        it('can aquire a token', function (done) {
+                    
+          localStorage.removeItem(element.storageKeys.token);
+
+          expect(element.accessToken).to.be.undefined;
+
+          var test_event_storage = function (e) {
+            if (e.key === element.storageKeys.token) {
+              removeEventListener('storage', test_event_storage);
+
+              let token = localStorage.getItem(element.storageKeys.token);
+              expect(token).to.not.be.null;
+              expect(token).to.not.be.undefined;
+              expect(token).to.be.a('string');
+    
+              // Find a way of getting testing we don't get an empty string or 'null'
+              //expect(token).to.have.lengthOf.at.least(10);
+    
+              expect(element.accessToken).to.not.be.null;
+              expect(element.accessToken).to.not.be.undefined;
+              expect(element.accessToken).to.be.a('string');
+    
+              // See above comment
+              // expect(element.accessToken).to.have.lengthOf.at.least(10);
+              done();
+            }
+          }
+
+          addEventListener('storage', test_event_storage);
+
+          element.performAuth();
         });
 
-        
+        it('synchronizes the token property and localStorage entry', function (done) {
+          localStorage.removeItem(element.storageKeys.token);
+
+          var test_event_storage2 = function (e) {
+            if (e.key === element.storageKeys.token) {
+              removeEventListener('storage', test_event_storage2); 
+              // One more timeout to ensure the element heard this event
+              expect(element.accessToken).to.be.equal(localStorage.getItem(element.storageKeys.token));
+              done();
+            }
+          }
+
+          addEventListener('storage', test_event_storage2);
+
+          element.performAuth();
+        });
+
+        it('persists a token between sessions', function (done) {
+          
+          expect(element.accessToken).to.not.be.undefined
+          expect(element.accessToken).to.not.be.null;
+          expect(element.accessToken).to.be.a('string');
+
+          expect(localStorage.getItem(element.storageKeys.token)).to.not.be.undefined;
+          expect(localStorage.getItem(element.storageKeys.token)).to.not.be.null;
+          expect(localStorage.getItem(element.storageKeys.token)).to.be.a('string');
+
+          done();
+        });
+
+        it('succeeds on API requests with a token', function (done) {
+          
+          element.performAuth();
+          fetch(`https://api.instagram.com/v1/users/self/?access_token=${element.accessToken}`).then(response => {
+            expect(response.status).to.equal(200);
+            return response.json();
+          }).then(reply => {
+            expect(reply.meta.code).to.equal(200);
+            done();
+          });
+        });
+      });
+
+      describe('arbutus-instagram UI tests', () => {
+
+        it('displays an image', function (done) {
+          const element = fixture('ImageTestFixture');
+          element.loadMedia();
+
+          const img = element.shadowRoot.querySelector('.content img');
+          
+          expect(img).to.have.property('src');
+
+          done();
+        });
       });
     </script>
 
