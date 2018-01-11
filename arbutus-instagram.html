@@ -11,8 +11,7 @@
       }
 
       .arbutus-media {
-        border: 1px solid #dbdbdb;
-        border-radius: 3px;
+
       }
 
       .arbutus-media header .userPhoto img {
@@ -35,21 +34,68 @@
         align-items: center;
         padding: 12px;
         font-size: 16px;
+        border: 1px solid #dbdbdb;
+        border-radius: 3px;
+        border-bottom: none;
+        border-bottom-left-radius: 0;
+        border-bottom-right-radius: 0;
       }
 
-      .arbutus-media .follow {
+      .arbutus-media .relation {
         margin-left: auto;
         font-weight: 800;
         color: #3897f0;
+        text-transform: capitalize;
+        cursor: pointer;
+      }
+
+      .arbutus-media .relation.self {
+        color: #999;
+        cursor: default;
+      }
+
+      .arbutus-media .content {
+        display: grid;
+        grid-template: 1fr / 1fr;
+      }
+
+      .arbutus-media .content .hearts {
+        grid-row: 1 / 2;
+        grid-column: 1 / 2;
+        z-index: 2;
+        display: flex;
+        justify-items: center;
+        align-items: center;
+        overflow: hidden;
+
+        -webkit-user-select: none; /* Safari */
+           -moz-user-select: none; /* Firefox */
+            -ms-user-select: none; /* Internet Explorer/Edge */
+                user-select: none; /* Non-prefixed version, currently
+                                      supported by Chrome and Opera */
+      }
+
+      .arbutus-media .content .hearts svg {
+        display: block;
+        margin: auto;
+        fill: #fff;
+        opacity: 0;
       }
 
       .arbutus-media .content img {
         width: 100%;
+        grid-row: 1 / 2;
+        grid-column: 1 / 2;
       }
 
       .arbutus-media footer {
         display: grid;
         grid-template-columns: 1fr 40px;
+        border: 1px solid #dbdbdb;
+        border-radius: 3px;
+        border-top: none;
+        border-top-left-radius: 0;
+        border-top-right-radius: 0;
       }
 
       .arbutus-media footer .lower {
@@ -64,6 +110,12 @@
         padding-bottom: 12px;
         font-size: 14px;
         font-weight: bold;
+      }
+
+      .arbutus-media footer .likes,
+      .arbutus-media footer .comments {
+        color: black;
+        text-decoration: none;
       }
 
       .arbutus-media footer .likes {
@@ -121,7 +173,7 @@
         margin-bottom: 8px;
       }
     </style>
-    
+
     <div>
       <h3>Arbutus Instagram Viewer : temporary DOM</h3>
       <div on-click="performAuth">Click here to authenticate this viewer!</div>
@@ -131,35 +183,144 @@
 
     <div id="embed" class="arbutus-media" hidden>
       <header>
-        <a class="userPhoto" href$="https://instagram.com/[[reply.data.user.username]]">
-          <img src$="[[reply.data.user.profile_picture]]">
+        <a class="userPhoto" href$="https://instagram.com/[[replies.media.data.user.username]]">
+          <img src$="[[replies.media.data.user.profile_picture]]">
         </a>
-        <a class="username" href$="https://instagram.com/[[reply.data.user.username]]">
-            [[reply.data.user.username]]
+        <a class="username" href$="https://instagram.com/[[replies.media.data.user.username]]">
+          [[replies.media.data.user.username]]
         </a>
-        <span class="follow">
-          Follow
-        </span>
+        <span class="relation" id="relationship" />
       </header>
-      <div class="content">
-        <img src$="[[reply.data.images.standard_resolution.url]]">
+      <div on-dblclick="like" class="content">
+        <div class="hearts">
+          <svg height="30" width="32" id="hearts">
+            <path d="M0 10 C0 6, 3 2, 8 2 C12 2, 15 5, 16 6 C17 5, 20 2, 24 2 C30 2, 32 6, 32 10 C32 18, 18 29, 16 30 C14 29, 0 18, 0 10"></path>
+          </svg>
+        </div>
+        <img src$="[[replies.media.data.images.standard_resolution.url]]">
       </div>
       <footer>
         <div class="lower">
           <div class="social">
-            <a class="likes"><div class="sprite sprite-like"></div><div>[[reply.data.likes.count]] likes</div></a>
-            <a class="comments"><div class="sprite sprite-comment"></div><div>[[reply.data.comments.count]] comments</div></a>
+            <a class="likes" href$="https://instagram.com/p/[[shortcode]]">
+              <div class="sprite sprite-like"></div>
+              <div>[[replies.media.data.likes.count]] likes</div>
+            </a>
+            <a class="comments" href$="https://instagram.com/p/[[shortcode]]">
+              <div class="sprite sprite-comment"></div>
+              <div>[[replies.media.data.comments.count]] comments</div>
+            </a>
           </div>
           <div id="caption"></div>
-          <div class="date">[[__toDate(reply.data.created_time)]]</div>
+          <div class="date">[[__toDate(replies.media.data.created_time)]]</div>
         </div>
-        <div class="logo"><div class="sprite sprite-logo"></div></div>
+        <div class="logo">
+          <div class="sprite sprite-logo"></div>
+        </div>
       </footer>
     </div>
 
   </template>
 
   <script>
+
+    class APIError extends Error { }
+    /**
+     * `Instagram API`
+     * A class for isolating where the urls for the instagram platform
+     */
+
+    class API {
+      static get url() {
+        return {
+          api: "https://api.instagram.com",
+          platform: "https://www.instagram.com"
+        };
+      }
+
+      static auth(clientid, redirecturi) {
+        if (!clientid) throw new APIError("Missing Client ID in API Call");
+        if (!redirecturi) throw new APIError("Missing redirect URI in API Call");
+        let params = new URLSearchParams();
+        params.set('client_id', clientid);
+        params.set('redirect_uri', redirecturi);
+        params.set('scope', ['basic', 'public_content', 'relationships', 'likes'].join(' '));
+        params.set('response_type', 'token');
+
+        const result = new URL('/oauth/authorize/', this.url.api);
+        result.search = params.toString();
+        return result.href;
+      }
+
+      static media(shortcode, token) {
+        if (!shortcode) throw new APIError("Missing media shortcode in API Call");
+        if (!token) throw new APIError("Missing authorization token in API Call");
+
+        let params = new URLSearchParams();
+        params.set('access_token', token);
+
+        const result = new URL(`/v1/media/shortcode/${shortcode}`, this.url.api);
+        result.search = params.toString();
+        return result.href;
+      }
+
+      static relation(userid, token) {
+        if (!userid) throw new APIError("Missing user id in API Call");
+        if (!token) throw new APIError("Missing authorization token in API Call");
+
+        let params = new URLSearchParams();
+        params.set('access_token', token);
+
+        const result = new URL(`/v1/users/${userid}/relationship`, this.url.api);
+        result.search = params.toString();
+        return result.href;
+      }
+
+      static self(token) { 
+        if (!token) throw new APIError("Missing authorization token in API Call");
+
+        let params = new URLSearchParams();
+        params.set('access_token', token);
+
+        const result = new URL(`/v1/users/self`, this.url.api);
+        result.search = params.toString();
+        return result.href;
+      }
+
+      static likes(mediaid, token) {
+        if (!mediaid) throw new APIError("Missing media id in API Call");
+        if (!token) throw new APIError("Missing authorization token in API Call");
+
+        let params = new URLSearchParams();
+        params.set('access_token', token);
+
+        const result = new URL(`/v1/media/${mediaid}/likes`, this.url.api);
+        result.search = params.toString();
+        return result.href;
+      }
+
+      static href(shortcode) {
+        if (!shortcode) throw new APIError("Missing shortcode in API Call");
+
+        const result = new URL(`/p/${shortcode}`, this.url.platform);
+        return result.href;
+      }
+
+      static user(username) {
+        if (!username) throw new APIError("Missing username in API Call");
+
+        const result = new URL(`/${username}`, this.url.platform);
+        return result.href;
+      }
+
+      static tags(tag) {
+        if (!tag) throw new APIError("Missing explore tag in API Call");
+
+        const result = new URL(`/explore/tags/${tag}`, this.url.platform);
+        return result.href;
+      }
+    }
+
     /**
      * `arbutus-instagram`
      * A polymer webcomponent for loading instagram content asynchronously (lazily) and within shadow dom.
@@ -192,7 +353,7 @@
             notify: true,
             reflectToAttribute: true,
             value: true
-          }, 
+          },
 
           // Internal properties
           storageKeys: {
@@ -227,9 +388,13 @@
             type: String,
             computed: "__computeLink(clientid, redirecturi)"
           },
-          reply: {
+          replies: {
             type: Object,
-            value: null
+            value: {
+              media: null,
+              relation: null,
+              self: null
+            }
           }
         };
       }
@@ -237,6 +402,7 @@
       constructor() {
         super();
         this._boundStorageListener = this.__onStorage.bind(this);
+        this.__computeLink = API.auth.bind(API);
       }
 
       ready() {
@@ -257,10 +423,11 @@
         let storedToken = window.localStorage.getItem(this.storageKeys.token);
         if (storedToken !== undefined && storedToken !== null) {
           this.accessToken = storedToken;
+          this.__getSelf();
         }
       }
 
-      disconnectedCallback(){
+      disconnectedCallback() {
         super.disconnectedCallback();
         window.removeEventListener('storage', this._boundStorageListener);
       }
@@ -272,12 +439,26 @@
         if (e.key === this.storageKeys.token) {
           // Someone changed our token
           this.accessToken = e.newValue;
+          if (!!this.accessToken) {
+            this.__getSelf();
+          }
         }
 
         if (e.key === this.storageKeys.id) {
           // Someone changed the stored client id
           this.clientid = e.newValue;
         }
+      }
+
+      async __getSelf() {
+        let response = fetch(API.self(this.accessToken));
+        let reply = await (await response).json();
+
+        if (reply.meta.code !== 200) {
+          throw new APIError(`${reply.meta.error_type} : ${reply.meta.error_message}`);
+        }
+
+        this.replies.self = reply;
       }
 
       /*
@@ -308,22 +489,95 @@
         this.redirecturi = new URL(this.redirecturi, location.href).href;
       }
 
-      __computeLink(id, uri) {
-        return `https://api.instagram.com/oauth/authorize/?client_id=${id}&redirect_uri=${uri}&response_type=token`;
-      }
-
       performAuth() {
         window.open(this.authLink, "_blank");
       }
 
       async loadMedia() {
-        let response = fetch(`https://api.instagram.com/v1/media/shortcode/${this.shortcode}?access_token=${this.accessToken}`);
-        this.reply = await (await response).json();
-        this.$.embed.hidden = false;
+        try {
+          let response = fetch(API.media(this.shortcode, this.accessToken));
+          this.replies.media = await (await response).json();
 
-        requestIdleCallback(() => {
-          this.__linkCaption(this.reply.data.caption.text);
-        })
+          if (this.replies.media.meta.code !== 200) {
+            throw new APIError(`${this.replies.media.meta.error_type} : ${this.replies.media.meta.error_message}`);
+          }
+
+          this.notifyPath("replies.media");
+          this.$.embed.hidden = false;
+
+          requestIdleCallback(async () => {
+
+            this.__linkCaption(this.replies.media.data.caption.text);
+
+            this.__getRelation(this.replies.media.data.user.id);
+
+          });
+        } catch (error) {
+          throw new APIError(!!error.message ? error.message : "Rejected promise while loading media");
+        }
+      }
+
+      async follow() {
+        let response = fetch(API.relation(this.replies.media.data.user.id, this.accessToken), {
+          method: "POST",
+          body: {
+            action: this.replies.relation.outgoing_status == "none" ? "follow" : "unfollow"
+          }
+        });
+
+        let result = await (await response).json();
+
+        if (result.meta.code !== 200) {
+          throw new APIError(`${result.meta.error_type} : ${result.meta.error_type}`);
+        }
+
+        this.replies.relation = result;
+        this.__updateRelation();
+
+      }
+
+      async like() {
+
+        let response = fetch(API.likes(this.replies.media.data.id, this.accessToken), {
+            method: this.replies.media.data.user_has_liked ? "DELETE" : "POST"
+        });
+
+        const like_animation = [
+          { transform: 'scale(2, 2)', opacity: 0 },
+          { transform: 'scale(3, 3)', opacity: 0.7, offset: 0.3 },
+          { transform: 'scale(2, 2)', opacity: 0 }
+        ];
+
+        const unlike_animation = [
+          { transform: 'scale(2.5, 2.5)', opacity: 0 },
+          { transform: 'scale(2.5, 2.5)', opacity: 0.7, offset: 0.3 },
+          { transform: 'scale(2.5, 2.5)', opacity: 0.7, offset: 0.5 },
+          { transform: 'scale(2.5, 2.5) translate(0, 20px)', opacity: 0}
+        ];
+
+        const animation = this.$.hearts.animate(
+          this.replies.media.data.user_has_liked ? unlike_animation : like_animation,
+          { duration: 500 }
+        );
+
+        try {
+
+          let reply = await (await response).json();
+
+          if (reply.meta.code !== 200) {
+            throw new APIError(`${reply.meta.error_type} : ${reply.meta.error_message}`);
+          }
+
+          this.replies.media.data.user_has_liked ^= true;
+        } catch (error) {
+
+          // When Animation.finished is implemented we can use await animation.finished;
+          setTimeout(() => {
+            // Couldn't complete the request, open a new tab
+            window.open(API.href(this.shortcode), "_blank");
+          }, 500);
+
+        }
       }
 
       __toDate(timestamp) {
@@ -338,31 +592,87 @@
         return `${month[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
       }
 
+      async __getRelation(user_id) {
+
+        if (this.replies.self.data.id !== user_id) {
+          try {
+            let response = fetch(API.relation(user_id, this.accessToken));
+            this.replies.relation = await (await response).json();
+
+            if (this.replies.relation.meta.code !== 200) {
+              throw new APIError(`${this.replies.relation.meta.error_type} : ${this.replies.relation.meta.error_message}`);
+            }
+
+            this.__updateRelation();
+
+          } catch (error) {
+            throw new APIError(!!error.message ? error.message : "Rejected promise while loading media");
+          }
+        } else {
+          this.$.relationship.innerText = null;
+          this.$.relationship.appendChild(document.createTextNode("You"));
+          this.$.relationship.classList.add('self');
+          this.$.relationship.removeEventListener('click', this.follow);
+        }
+      }
+
+      __updateRelation() {
+        this.$.relationship.innerText = null;
+        let relationshipText;
+
+        switch (this.replies.relation.data.outgoing_status) {
+          case "follows": {
+            relationshipText = "Following";
+            break;
+          }
+
+          case "requested": {
+            relationshipText = "Requested";
+            break;
+          }
+
+          case "none": {
+            relationshipText = "Follow";
+            break;
+          }
+        }
+
+        if (relationshipText) {
+          this.$.relationship.addEventListener('click', this.follow);
+          this.$.relationship.classList.remove('self');
+          this.$.relationship.appendChild(document.createTextNode(relationshipText));
+        }
+      }
+
       __linkCaption(text) {
         let regex = /(?:[@#])([A-Za-z0-9_](?:(?:[A-Za-z0-9_]|(?:\.(?!\.))){0,28}(?:[A-Za-z0-9_]))?)/;
         let pieces = [document.createTextNode(text)];
 
         // Is there a hashtag or user in the last piece
-        while (regex.test(pieces[pieces.length -1].textContent)) {
+        while (regex.test(pieces[pieces.length - 1].textContent)) {
 
           // There was, grab it
           let match = regex.exec(pieces[pieces.length - 1].textContent);
 
           // Split the match from the rest of the text
-          let nameortag = pieces[pieces.length -1].splitText(match.index);
+          let nameortag = pieces[pieces.length - 1].splitText(match.index);
           let rest = nameortag.splitText(match[0].length);
 
           // Create a link
           let link = document.createElement('a');
 
-          link.href = `https://instagram.com${match[0].startsWith("#") ? "/explore/tags" : ""}/${match[1]}`;
+          link.href = match[0].startsWith("#") ? API.tags(match[1]) : API.user(match[1]);
           link.appendChild(nameortag);
 
           // Push the pieces
           pieces.push(link, rest);
         }
-        
+
         let container = this.$.caption;
+
+        // Remove anything thats in our caption container
+        while (container.hasChildNodes()) { container.removeChild(container.lastChild); }
+
         pieces.map(node => container.appendChild(node));
       }
 
