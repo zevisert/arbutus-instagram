@@ -43,7 +43,7 @@
       }
 
       .arbutus-media header:hover, 
-      .arbutus-media .content:hover ~ header {
+      .arbutus-media main:hover ~ header {
         transform: var(--compact-transform-header);
       }
 
@@ -53,15 +53,22 @@
         font-weight: 500;
       }
 
-      .arbutus-media .content img {
-        width: 100%;
-        vertical-align: middle;
+      .arbutus-media header time {
+        color: #999999;
+        text-transform: uppercase;
+        font-size: 14px;
+        margin-top: 6px;
       }
 
-      .arbutus-media .content {
+      .arbutus-media main {
         position: relative;
         z-index: 2;
         order: var(--compact-order-content);
+      }
+
+      .arbutus-media main img {
+        width: 100%;
+        vertical-align: middle;
       }
 
       .arbutus-media .social {
@@ -81,9 +88,18 @@
       }
       
       .arbutus-media .social:hover, 
-      .arbutus-media .content:hover .social {
+      .arbutus-media main:hover .social {
         opacity: 100;
         z-index: 3;
+      }
+
+      .arbutus-media .social paper-button.custom {
+        background-color: white;
+        color: black;
+      }
+
+      .arbutus-media .social paper-button.custom iron-icon {
+        padding-right: 0.5em;
       }
 
       .arbutus-media footer {
@@ -106,17 +122,8 @@
       }
 
       .arbutus-media footer:hover, 
-      .arbutus-media .content:hover ~ footer {
+      .arbutus-media main:hover ~ footer {
         transform: var(--compact-transform-footer);
-      }
-
-      .arbutus-media .social paper-button.custom {
-        background-color: white;
-        color: black;
-      }
-
-      .arbutus-media .social paper-button.custom iron-icon {
-        padding-right: 0.5em;
       }
 
       .arbutus-media footer #caption a,
@@ -125,39 +132,35 @@
         text-decoration: none;
       }
 
-      .arbutus-media header .date {
-        color: #999999;
-        text-transform: uppercase;
-        font-size: 14px;
-        margin-top: 6px;
-      }
-
     </style>
     
     <div id="embed" class="arbutus-media" hidden>
-      <div class="content">
+      <main>
         <img src$="[[reply.content.src]]">
         <div class="social">
-            <a class="likes" tabindex="-1">
-              <paper-button tabindex="-1" class="custom" raised>
-                <iron-icon icon="icons:thumb-up"></iron-icon>[[__numLikesText(reply.thumbs)]]
-              </paper-button>
-              </a>
-            <a class="comments" tabindex="-1">
-              <paper-button tabindex="-1" class="custom" raised>
-                <iron-icon icon="icons:question-answer"></iron-icon>[[__numCommentsText(reply.comments.length)]]
-              </paper-button>
-            </a>
-          </div>
-      </div>
+          <!-- <a class="likes" tabindex="-1">
+            <paper-button tabindex="-1" class="custom" raised>
+              <iron-icon icon="icons:thumb-up"></iron-icon>[[__numLikesText(reply.thumbs)]]
+            </paper-button>
+          </a> -->
+          <a class="comments" tabindex="-1">
+            <paper-button tabindex="-1" class="custom" raised>
+              <iron-icon icon="icons:question-answer"></iron-icon>[[__numCommentsText(reply.comments.length)]]
+            </paper-button>
+          </a>
+        </div>
+      </main>
       <header>
         <div class="title">
             [[reply.content.title.text]]
         </div>
-        <div class="date">[[__toDate(reply.date)]]</div>
+        <time>[[__toDate(reply.date)]]</time>
       </header>
       <footer>
         <div id="caption"></div>
+        <template is="dom-repeat" items="{{reply.comments}}">
+          <div class="comment"><b>[[__authorText(item.commenter)]] > </b> [[item.text]]</div>
+        </template>
       </footer>
     </div>
 
@@ -359,7 +362,8 @@
         let response = fetch(`${this.path}/shortcode/${this.shortcode}`);
 
         requestIdleCallback(async () => {
-          this.reply = (await (await response).json()).data.Share;
+          let body = (await response).json();
+          this.reply = (await body).data.Share;
           this.$.embed.hidden = false;
           this.__linkCaption(this.reply.caption.text);
         })
@@ -414,6 +418,9 @@
         pieces.map(node => container.appendChild(node));
       }
 
+      __authorText(commenter) {
+        return `${!!commenter ? commenter : "@unknown"}`; 
+      }
     }
 
     window.customElements.define(ArbutusViewer.is, ArbutusViewer);
