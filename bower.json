@@ -1,7 +1,7 @@
 {
-  "name": "arbutus-instagram",
-  "description": "A polymer webcomponent for loading instagram content asynchronously (lazily) and within shadow dom.",
-  "main": "arbutus-instagram.html",
+  "name": "arbutus-viewer",
+  "description": "A polymer webcomponent for loading video and image content asynchronously (lazily) and within shadow dom.",
+  "main": "arbutus-viewer.html",
   "dependencies": {
     "polymer": "Polymer/polymer#^2.0.0"
   },

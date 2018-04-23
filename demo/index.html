@@ -4,13 +4,13 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, minimum-scale=1, initial-scale=1, user-scalable=yes">
 
-    <title>arbutus-instagram demo</title>
+    <title>arbutus-viewer demo</title>
 
     <script src="../../webcomponentsjs/webcomponents-lite.js"></script>
 
     <link rel="import" href="../../iron-demo-helpers/demo-pages-shared-styles.html">
     <link rel="import" href="../../iron-demo-helpers/demo-snippet.html">
-    <link rel="import" href="../arbutus-instagram.html">
+    <link rel="import" href="../arbutus-viewer.html">
 
     <custom-style>
       <style is="custom-style" include="demo-pages-shared-styles">
@@ -19,10 +19,26 @@
   </head>
   <body>
     <div class="vertical-section-container centered">
-      <h3>Basic arbutus-instagram demo</h3>
+      <h3>Basic arbutus-viewer demo</h3>
       <demo-snippet>
         <template>
-          <arbutus-instagram shortcode="BZEemCJl4IC"></arbutus-instagram>
+          <arbutus-viewer shortcode="Sy9-_JohM" path="http://localhost:8080/api/arbutus"></arbutus-viewer>
+        </template>
+      </demo-snippet>
+    </div>
+    <div class="vertical-section-container centered">
+      <h3>Compact arbutus-viewer demo</h3>
+      <demo-snippet>
+        <template>
+          <arbutus-viewer compact shortcode="ByIWEvt3f" path="http://localhost:8080/api/arbutus"></arbutus-viewer>
+        </template>
+      </demo-snippet>
+    </div>
+    <div class="vertical-section-container centered">
+      <h3>Captionless arbutus-viewer demo</h3>
+      <demo-snippet>
+        <template>
+          <arbutus-viewer nocaption shortcode="HyDYCu9nG" path="http://localhost:8080/api/arbutus"></arbutus-viewer>
         </template>
       </demo-snippet>
     </div>

@@ -1,6 +1,6 @@
-# \<arbutus-instagram\>
+# \<arbutus-viewer\>
 
-A polymer-based webcomponent I'm releasing independantly from my upcoming 'arbutus' project. This webcomponent is for loading instagram content asynchronously (lazily) and within shadow dom.
+A polymer-based webcomponent I'm releasing independently from my upcoming 'arbutus' project. This webcomponent is for loading image and video content asynchronously (lazily) and within shadow dom.
 
 ## Install the Polymer-CLI
 

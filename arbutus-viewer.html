@@ -1,0 +1,421 @@
+<link rel="import" href="../polymer/polymer-element.html">
+<link rel="import" href="../iron-icons/iron-icons.html">
+<link rel="import" href="../iron-icon/iron-icon.html">
+<link rel="import" href="../paper-button/paper-button.html">
+
+<dom-module id="arbutus-viewer">
+  <template>
+    <style>
+      :host {
+        --compact-position: static;
+        --compact-order-header: 1;
+        --compact-order-content: 2;
+        --compact-order-footer: 3;
+        --compact-transform-footer: translateY(0%);
+        --compact-transform-header: translateY(0%);
+      }
+
+      .arbutus-media {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .arbutus-media header {
+        position: var(--compact-position);
+        z-index: 1;
+        top: 0%;
+        order: var(--compact-order-header);
+
+        width: calc(100% - 24px - 2px);
+        border: 1px solid #dbdbdb;
+        border-radius: 3px 3px 0 0; 
+        border-bottom-width: 0; 
+
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        background-color: white;
+        padding: 12px;
+        font-size: 16px;
+
+        transition: all ease-in-out 0.5s;
+      }
+
+      .arbutus-media header:hover, 
+      .arbutus-media .content:hover ~ header {
+        transform: var(--compact-transform-header);
+      }
+
+      .arbutus-media header .title {
+        text-decoration: none;
+        color: black;
+        font-weight: 500;
+      }
+
+      .arbutus-media .content img {
+        width: 100%;
+        vertical-align: middle;
+      }
+
+      .arbutus-media .content {
+        position: relative;
+        z-index: 2;
+        order: var(--compact-order-content);
+      }
+
+      .arbutus-media .social {
+        position: absolute;
+        right: 0%;
+        bottom: 0%;
+        z-index: 1;
+
+        display: flex;
+        flex-direction: row;
+        padding: 0.5em;
+        font-size: 14px;
+        opacity: 0;
+        --iron-icon-height: 18px;
+        --iron-icon-width: 18px;
+        transition: opacity ease-in-out 0.5s 0.5s;
+      }
+      
+      .arbutus-media .social:hover, 
+      .arbutus-media .content:hover .social {
+        opacity: 100;
+        z-index: 3;
+      }
+
+      .arbutus-media footer {
+        position: var(--compact-position);
+        bottom: 0%;
+        order: var(--compact-order-footer);
+        z-index: 1;
+
+        width: calc(100% - 24px - 2px);
+        border: 1px solid #dbdbdb;
+        border-radius: 0 0 3px 3px; 
+        border-top-width: 0; 
+
+        background-color: white;
+        display: flex;
+        flex-direction: column;
+        padding: 12px;
+
+        transition: all ease-in-out 0.5s;
+      }
+
+      .arbutus-media footer:hover, 
+      .arbutus-media .content:hover ~ footer {
+        transform: var(--compact-transform-footer);
+      }
+
+      .arbutus-media .social paper-button.custom {
+        background-color: white;
+        color: black;
+      }
+
+      .arbutus-media .social paper-button.custom iron-icon {
+        padding-right: 0.5em;
+      }
+
+      .arbutus-media footer #caption a,
+      .arbutus-media footer #caption a:visited {
+        color: #003569;
+        text-decoration: none;
+      }
+
+      .arbutus-media header .date {
+        color: #999999;
+        text-transform: uppercase;
+        font-size: 14px;
+        margin-top: 6px;
+      }
+
+    </style>
+    
+    <div id="embed" class="arbutus-media" hidden>
+      <div class="content">
+        <img src$="[[reply.content.src]]">
+        <div class="social">
+            <a class="likes" tabindex="-1">
+              <paper-button tabindex="-1" class="custom" raised>
+                <iron-icon icon="icons:thumb-up"></iron-icon>[[__numLikesText(reply.thumbs)]]
+              </paper-button>
+              </a>
+            <a class="comments" tabindex="-1">
+              <paper-button tabindex="-1" class="custom" raised>
+                <iron-icon icon="icons:question-answer"></iron-icon>[[__numCommentsText(reply.comments.length)]]
+              </paper-button>
+            </a>
+          </div>
+      </div>
+      <header>
+        <div class="title">
+            [[reply.content.title.text]]
+        </div>
+        <div class="date">[[__toDate(reply.date)]]</div>
+      </header>
+      <footer>
+        <div id="caption"></div>
+      </footer>
+    </div>
+
+  </template>
+
+  <script>
+    /**
+     * `arbutus-viewer`
+     * A polymer webcomponent for loading image and video content asynchronously (lazily) and within shadow dom.
+     *
+     * @customElement
+     * @polymer
+     * @demo demo/index.html
+     */
+    class ArbutusViewer extends Polymer.Element {
+      static get is() { return 'arbutus-viewer'; }
+      static get properties() {
+        return {
+
+          // Operational properties
+          shortcode: {
+            // Identifier referencing a 'share'
+            type: String,
+            notify: true,
+            reflectToAttribute: true,
+            observer: "loadMedia"
+          },
+
+          path: {
+            // Path / route on server to fetch the content from 
+            type: String,
+            notify: true,
+            reflectToAttribute: true
+          },
+
+          compact: {
+            // If title and caption should appear on mouse over,
+            // or should always be visible
+            type: Boolean,
+            notify: true,
+            reflectToAttribute: true,
+            value: false
+          },
+
+          comments: {
+            // If comments should be shown
+            type: Boolean,
+            notify: true,
+            reflectToAttribute: true,
+            value: false
+          },
+
+          nocaption: {
+            // If a caption (and title) should be hidden
+            type: Boolean,
+            notify: true,
+            reflectToAttribute: true,
+            value: false
+          }, 
+
+          // Internal properties
+          storageKeys: {
+            type: Object,
+            readonly: true,
+            value: {
+              token: 'arbutus-viewer::access_token',
+              id: 'arbutus-viewer::client_id'
+            }
+          },
+          clientid: {
+            type: String,
+            notify: true,
+            reflectToAttribute: true,
+            observer: "__clientIDChanged",
+            value: () => localStorage.getItem('arbutus-viewer::client_id') || ""
+          },
+          redirecturi: {
+            type: String,
+            notify: true,
+            reflectToAttribute: true,
+            observer: "__redirectURIChanged",
+            value: () => location.href
+          },
+          accessToken: {
+            type: String,
+            readonly: true,
+            notify: true,
+            value: null
+          },
+          authLink: {
+            type: String,
+            computed: "__computeLink(clientid, redirecturi)"
+          },
+          reply: {
+            type: Object,
+            value: null
+          }
+        };
+      }
+
+      constructor() {
+        super();
+        this._boundStorageListener = this.__onStorage.bind(this);
+      }
+
+      ready() {
+        super.ready();
+        // Handles cases when the redirect URI points back to this page
+        let match = location.hash.match("#access_token=([a-zA-Z0-9\.]+)");
+        if (match && match[1]) {
+          window.localStorage.setItem("arbutus-viewer::access_token", match[1].toString());
+        }
+        if (this.compact && !this.nocaption) {
+          this.updateStyles({
+            '--compact-position': 'absolute',
+            '--compact-order-header': '2',
+            '--compact-order-content': '1',
+            '--compact-transform-footer': 'translateY(100%)',
+            '--compact-transform-header': 'translateY(-100%)'
+          });
+        }
+
+        else if (this.nocaption) {
+          this.updateStyles({
+            '--compact-position': 'absolute'
+          });
+        }
+      }
+
+      connectedCallback() {
+        super.connectedCallback();
+
+        window.addEventListener('storage', this._boundStorageListener);
+
+        // See if we're authenticated from a previous session
+        let storedToken = window.localStorage.getItem(this.storageKeys.token);
+        if (storedToken !== undefined && storedToken !== null) {
+          this.accessToken = storedToken;
+        }
+      }
+
+      disconnectedCallback(){
+        super.disconnectedCallback();
+        window.removeEventListener('storage', this._boundStorageListener);
+      }
+
+      /*
+      * Fires when another tab changes local storage
+      */
+      __onStorage(e) {
+        if (e.key === this.storageKeys.token) {
+          // Someone changed our token
+          this.accessToken = e.newValue;
+        }
+
+        if (e.key === this.storageKeys.id) {
+          // Someone changed the stored client id
+          this.clientid = e.newValue;
+        }
+      }
+
+      /*
+      *  Fires when the DOM changes the clientid attribute
+      */
+      __clientIDChanged() {
+        // Get old client_id
+        let stored_id = window.localStorage.getItem(this.storageKeys.id);
+
+        // Set new client_id
+        if (this.clientid) {
+          window.localStorage.setItem(this.storageKeys.id, this.clientid);
+        } else {
+          window.localStorage.removeItem(this.storageKeys.id);
+        }
+
+        // If client_id has changed, remove the token and update the auth link
+        if (stored_id !== this.clientid) {
+          window.localStorage.removeItem(this.storageKeys.token);
+          this.accessToken = undefined;
+        }
+      }
+
+      /* 
+      * Fires when the DOM changes the redirecturi attribute
+      */
+      __redirectURIChanged() {
+        this.redirecturi = new URL(this.redirecturi, location.href).href;
+      }
+
+      __computeLink(id, uri) {
+        return `http://data.zevisert.com/oauth/authorize/?client_id=${id}&redirect_uri=${uri}&response_type=token`;
+      }
+
+      performAuth() {
+        window.open(this.authLink, "_blank");
+      }
+
+      loadMedia() {
+        let response = fetch(`${this.path}/shortcode/${this.shortcode}`);
+
+        requestIdleCallback(async () => {
+          this.reply = (await (await response).json()).data.Share;
+          this.$.embed.hidden = false;
+          this.__linkCaption(this.reply.caption.text);
+        })
+      }
+
+      __toDate(timestamp) {
+        const d = new Date(timestamp);
+        const month_name = [
+          "January", "February", "March",
+          "April", "May", "June", "July",
+          "August", "September", "October",
+          "November", "December"
+        ];
+
+        return `${month_name[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+      }
+
+      __numLikesText(count) {
+        return `${count} like${count == 1 ? '' : 's'}`;
+      }
+
+      __numCommentsText(count) {
+        return `${count} comment${count == 1 ? '' : 's'}`;
+      }
+
+      __linkCaption(text) {
+        let regex = /(?:[@#])([A-Za-z0-9_](?:(?:[A-Za-z0-9_]|(?:\.(?!\.))){0,28}(?:[A-Za-z0-9_]))?)/;
+        let pieces = [document.createTextNode(text)];
+
+        // Is there a hashtag or user in the last piece
+        while (regex.test(pieces[pieces.length -1].textContent)) {
+
+          // There was, grab it
+          let match = regex.exec(pieces[pieces.length - 1].textContent);
+
+          // Split the match from the rest of the text
+          let nameortag = pieces[pieces.length -1].splitText(match.index);
+          let rest = nameortag.splitText(match[0].length);
+
+          // Create a link
+          let link = document.createElement('a');
+
+          link.href = `https://instagram.com${match[0].startsWith("#") ? "/explore/tags" : ""}/${match[1]}`;
+          link.appendChild(nameortag);
+
+          // Push the pieces
+          pieces.push(link, rest);
+        }
+        
+        let container = this.$.caption;
+        container.innerHTML = "";
+        pieces.map(node => container.appendChild(node));
+      }
+
+    }
+
+    window.customElements.define(ArbutusViewer.is, ArbutusViewer);
+  </script>
+</dom-module>

@@ -4,35 +4,35 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, minimum-scale=1, initial-scale=1, user-scalable=yes">
 
-    <title>arbutus-instagram test</title>
+    <title>arbutus-viewer test</title>
 
     <script src="../../webcomponentsjs/webcomponents-lite.js"></script>
     <script src="../../web-component-tester/browser.js"></script>
 
-    <link rel="import" href="../arbutus-instagram.html">
+    <link rel="import" href="../arbutus-viewer.html">
   </head>
   <body>
 
     <test-fixture id="BasicTestFixture">
       <template>
-        <arbutus-instagram redirecturi="/callback.html"></arbutus-instagram>
+        <arbutus-viewer redirecturi="/callback.html"></arbutus-viewer>
       </template>
     </test-fixture>
     
     <test-fixture id="ImageTestFixture">
       <template>
-        <arbutus-instagram shortcode="BSrtEwZF3xV"></arbutus-instagram>
+        <arbutus-viewer shortcode="BSrtEwZF3xV"></arbutus-viewer>
       </template>
     </test-fixture>
 
     <test-fixture id="VideoTestFixture">
         <template>
-          <arbutus-instagram shortcode="BZEemCJl4IC"></arbutus-instagram>
+          <arbutus-viewer shortcode="BZEemCJl4IC"></arbutus-viewer>
         </template>
     </test-fixture>
 
     <script>
-      describe('arbutus-instagram local tests', () => {
+      describe('arbutus-viewer local tests', () => {
 
         let element;
         beforeEach(() => {
@@ -204,7 +204,7 @@
         it('succeeds on API requests with a token', function (done) {
           
           element.performAuth();
-          fetch(`https://api.instagram.com/v1/users/self/?access_token=${element.accessToken}`).then(response => {
+          fetch(`https://api.viewer.com/v1/users/self/?access_token=${element.accessToken}`).then(response => {
             expect(response.status).to.equal(200);
             return response.json();
           }).then(reply => {
@@ -214,7 +214,7 @@
         });
       });
 
-      describe('arbutus-instagram UI tests', () => {
+      describe('arbutus-viewer UI tests', () => {
 
         it('displays an image', function (done) {
           const element = fixture('ImageTestFixture');
