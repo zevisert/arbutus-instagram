@@ -2,6 +2,7 @@
 <link rel="import" href="../iron-icons/iron-icons.html">
 <link rel="import" href="../iron-icon/iron-icon.html">
 <link rel="import" href="../paper-button/paper-button.html">
+<link rel="import" href="../paper-input/paper-input.html">
 
 <dom-module id="arbutus-viewer">
   <template>
@@ -102,6 +103,7 @@
         padding-right: 0.5em;
       }
 
+
       .arbutus-media footer {
         position: var(--compact-position);
         bottom: 0%;
@@ -117,13 +119,23 @@
         display: flex;
         flex-direction: column;
         padding: 12px;
+        font-size: 14px;
+
+        --paper-input-container-input: {
+          font-size: inherit;
+        }
 
         transition: all ease-in-out 0.5s;
       }
 
       .arbutus-media footer:hover, 
-      .arbutus-media main:hover ~ footer {
+      .arbutus-media main:hover ~ footer,
+      .arbutus-media footer:focus-within {
         transform: var(--compact-transform-footer);
+      }
+
+      .arbutus-media footer paper-input {
+        min-width: 100%;
       }
 
       .arbutus-media footer #caption a,
@@ -132,20 +144,19 @@
         text-decoration: none;
       }
 
+      .arbutus-media footer .comment {
+        word-break: break-all;
+      }
+
     </style>
     
     <div id="embed" class="arbutus-media" hidden>
       <main>
         <img src$="[[reply.content.src]]">
         <div class="social">
-          <!-- <a class="likes" tabindex="-1">
+          <a class="likes" tabindex="-1">
             <paper-button tabindex="-1" class="custom" raised>
               <iron-icon icon="icons:thumb-up"></iron-icon>[[__numLikesText(reply.thumbs)]]
-            </paper-button>
-          </a> -->
-          <a class="comments" tabindex="-1">
-            <paper-button tabindex="-1" class="custom" raised>
-              <iron-icon icon="icons:question-answer"></iron-icon>[[__numCommentsText(reply.comments.length)]]
             </paper-button>
           </a>
         </div>
@@ -161,6 +172,9 @@
         <template is="dom-repeat" items="{{reply.comments}}">
           <div class="comment"><b>[[__authorText(item.commenter)]] > </b> [[item.text]]</div>
         </template>
+        <paper-input id="commentInput" placeholder="Comment on this" value="">
+            <iron-icon icon="icons:question-answer" slot="suffix" on-click="createComment"></iron-icon>
+        </paper-input>
       </footer>
     </div>
 
@@ -254,6 +268,10 @@
             type: String,
             computed: "__computeLink(clientid, redirecturi)"
           },
+          commenting: {
+            type: Boolean,
+            value: false
+          },
           reply: {
             type: Object,
             value: null
@@ -288,6 +306,10 @@
             '--compact-position': 'absolute'
           });
         }
+        
+        this.$.commentInput.noLabelFloat = true;
+        this.$.commentInput.minLength = 3;
+        this.$.commentInput.maxLength = 250;
       }
 
       connectedCallback() {
@@ -369,6 +391,27 @@
         })
       }
 
+      createComment() {
+        if (true /* something about auth / user  accounts */ && this.$.commentInput.validate()) {
+          let response = fetch(`${this.path}/shortcode/${this.shortcode}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+              new: "comment",
+              payload: this.$.commentInput.value
+            }),
+            headers: new Headers({
+              'Content-Type': 'application/json'
+            })
+          });
+
+          requestIdleCallback(async () => {
+            let body = (await response).json();
+            this.set('reply.comments', (await body).data.Share.comments);
+            this.$.commentInput.value = "";
+          });
+        }
+      }
+
       __toDate(timestamp) {
         const d = new Date(timestamp);
         const month_name = [
@@ -387,6 +430,10 @@
 
       __numCommentsText(count) {
         return `${count} comment${count == 1 ? '' : 's'}`;
+      }
+
+      __authorText(commenter) {
+        return `${!!commenter ? commenter : "@unknown"}`; 
       }
 
       __linkCaption(text) {
@@ -418,9 +465,6 @@
         pieces.map(node => container.appendChild(node));
       }
 
-      __authorText(commenter) {
-        return `${!!commenter ? commenter : "@unknown"}`; 
-      }
     }
 
     window.customElements.define(ArbutusViewer.is, ArbutusViewer);
